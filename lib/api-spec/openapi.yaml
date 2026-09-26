@@ -1,0 +1,367 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: game
+    description: Student game and progress operations
+  - name: teacher
+    description: Teacher dashboard operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /game/levels:
+    get:
+      operationId: getGameLevels
+      tags: [game]
+      summary: Get the Python Quest level map
+      responses:
+        "200":
+          description: Level map
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GameLevel"
+  /students:
+    post:
+      operationId: createStudent
+      tags: [game]
+      summary: Start or resume a student game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentInput"
+      responses:
+        "201":
+          description: Student game profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+  /students/roster/{grade}:
+    get:
+      operationId: getStudentRoster
+      tags: [game]
+      summary: Get the saved names for a class
+      parameters:
+        - name: grade
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["11", "8A", "8B"]
+      responses:
+        "200":
+          description: Saved student names
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+  /students/{studentId}:
+    get:
+      operationId: getStudent
+      tags: [game]
+      summary: Get a student profile and progress
+      parameters:
+        - $ref: "#/components/parameters/StudentId"
+      responses:
+        "200":
+          description: Student profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+  /students/{studentId}/progress:
+    post:
+      operationId: saveStudentProgress
+      tags: [game]
+      summary: Save level progress
+      parameters:
+        - $ref: "#/components/parameters/StudentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgressInput"
+      responses:
+        "200":
+          description: Updated student profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+  /students/{studentId}/attempts:
+    post:
+      operationId: recordStudentAttempt
+      tags: [game]
+      summary: Record an answer attempt
+      parameters:
+        - $ref: "#/components/parameters/StudentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttemptInput"
+      responses:
+        "201":
+          description: Recorded attempt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attempt"
+  /students/{studentId}/run:
+    post:
+      operationId: runStudentCode
+      tags: [game]
+      summary: Run a student's Python code in a restricted classroom runner
+      parameters:
+        - $ref: "#/components/parameters/StudentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunCodeInput"
+      responses:
+        "200":
+          description: Captured Python output or error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunCodeResult"
+  /challenges/{challengeId}/submit:
+    post:
+      operationId: submitChallenge
+      tags: [game]
+      summary: Validate a challenge solution against fresh hidden test cases
+      parameters:
+        - $ref: "#/components/parameters/ChallengeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChallengeSubmitInput"
+      responses:
+        "200":
+          description: Challenge validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunCodeResult"
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [game]
+      summary: Get the student leaderboard
+      responses:
+        "200":
+          description: Public classroom leaderboard
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+  /teacher/dashboard:
+    get:
+      operationId: getTeacherDashboard
+      tags: [teacher]
+      summary: Get classroom progress and activity
+      responses:
+        "200":
+          description: Classroom dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherDashboard"
+components:
+  parameters:
+    StudentId:
+      name: studentId
+      in: path
+      required: true
+      schema:
+        type: integer
+    ChallengeId:
+      name: challengeId
+      in: path
+      required: true
+      schema:
+        type: integer
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    GameLevel:
+      type: object
+      required: [id, title, chapter, difficulty, xp, mission, skills, questionCount]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        chapter: { type: string }
+        difficulty: { type: string }
+        xp: { type: integer }
+        mission: { type: string }
+        skills:
+          type: array
+          items: { type: string }
+        questionCount: { type: integer }
+    StudentInput:
+      type: object
+      required: [name, grade]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        grade: { type: string, enum: ["11", "8A", "8B"] }
+    StudentProfile:
+      type: object
+      required: [id, name, grade, xp, level, lives, completedLevels, streak, lastSeenAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        grade: { type: string, enum: ["11", "8A", "8B"] }
+        xp: { type: integer }
+        level: { type: integer }
+        lives: { type: integer }
+        completedLevels:
+          type: array
+          items: { type: integer }
+        streak: { type: integer }
+        lastSeenAt: { type: string, format: date-time }
+    ProgressInput:
+      type: object
+      required: [levelId, xpEarned, livesRemaining, completed]
+      properties:
+        levelId: { type: integer }
+        xpEarned: { type: integer, minimum: 0 }
+        livesRemaining: { type: integer, minimum: 0, maximum: 30 }
+        completed: { type: boolean }
+        tabSwitches: { type: integer, minimum: 0 }
+    AttemptInput:
+      type: object
+      required: [levelId, questionId, correct]
+      properties:
+        levelId: { type: integer }
+        questionId: { type: string }
+        correct: { type: boolean }
+        answer: { type: string, maxLength: 12000 }
+        tabSwitchDetected: { type: boolean }
+    RunCodeInput:
+      type: object
+      required: [levelId, code]
+      properties:
+        levelId: { type: integer }
+        code: { type: string, minLength: 1, maxLength: 12000 }
+    RunCodeResult:
+      type: object
+      required: [success, correct, output, error, sampleInput, passedTests, totalTests, message, status]
+      properties:
+        success: { type: boolean }
+        correct: { type: boolean }
+        output: { type: string }
+        error: { type: string }
+        sampleInput: { type: string }
+        passedTests: { type: integer }
+        totalTests: { type: integer }
+        message: { type: string }
+        status:
+          type: string
+          enum: [passed, wrong_answer, syntax_error, runtime_error, timeout, service_unavailable]
+        failedTest:
+          $ref: "#/components/schemas/FailedTest"
+    ChallengeSubmitInput:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 12000 }
+    FailedTest:
+      type: object
+      required: [input, expected, actual]
+      properties:
+        input: { type: string }
+        expected: { type: string }
+        actual: { type: string }
+    Attempt:
+      type: object
+      required: [id, levelId, questionId, correct, createdAt]
+      properties:
+        id: { type: integer }
+        levelId: { type: integer }
+        questionId: { type: string }
+        correct: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    StudentSummary:
+      type: object
+      required: [id, name, grade, xp, level, lives, completedLevels, lastSeenAt, status, tabSwitches]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        grade: { type: string, enum: ["11", "8A", "8B"] }
+        xp: { type: integer }
+        level: { type: integer }
+        lives: { type: integer }
+        completedLevels: { type: integer }
+        lastSeenAt: { type: string, format: date-time }
+        status: { type: string }
+        tabSwitches: { type: integer }
+    LeaderboardEntry:
+      type: object
+      required: [rank, name, xp, level, completedLevels]
+      properties:
+        rank: { type: integer }
+        name: { type: string }
+        xp: { type: integer }
+        level: { type: integer }
+        completedLevels: { type: integer }
+    TeacherDashboard:
+      type: object
+      required: [totalStudents, activeToday, completedQuest, averageXp, students, recentActivity]
+      properties:
+        totalStudents: { type: integer }
+        activeToday: { type: integer }
+        completedQuest: { type: integer }
+        averageXp: { type: integer }
+        students:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentSummary"
+        recentActivity:
+          type: array
+          items:
+            type: object
+            required: [studentName, event, levelId, createdAt]
+            properties:
+              studentName: { type: string }
+              event: { type: string }
+              levelId: { type: integer }
+              createdAt: { type: string, format: date-time }
+

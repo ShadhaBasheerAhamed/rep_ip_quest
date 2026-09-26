@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Python Quest"
+description = "A classroom game that helps Grade XI Informatics Practices students master Python basics through progressive coding missions, XP, levels, and a live teacher dashboard."
+version = "1.0.0"
+id = "artifacts/python-quest"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20664
+
+[services.development]
+run = "pnpm --filter @workspace/python-quest run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/python-quest", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/python-quest/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20664"
+BASE_PATH = "/"
